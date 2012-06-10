@@ -1,0 +1,46 @@
+!!! html
+
+//if lt IE 7
+  html(lang="en", class="ie6")
+//if IE 7
+  html(lang="en", class="ie7")
+// if IE 8
+  html(lang="en", class="ie8")
+//if IE 9
+  html(lang="en", class="ie9")
+//if (gt IE 9)|!(IE)
+  html(lang="en")
+
+head
+    meta(charset="UTF-8")
+    meta(http-equiv="X-UA-Compatible", content="IE=edge,chrome=1")
+    meta(name="description", content="")
+    meta(name="author", content="")
+
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+
+    title Landis Photos
+
+    link(href="/deps/bootstrap/css/bootstrap.css", type="text/css", rel="stylesheet")
+
+    //if lt IE 9
+      script(src="http://html5shiv.googlecode.com/svn/trunk/html5.js")
+
+body
+  div(class="navbar")
+    div(class="navbar-inner")
+      div(class="container")
+        a(class="brand", href="/") 
+          | Landis Photos
+        ul(class="nav")
+          li
+            a(href="/") Home
+          li
+           button#upload.btn Upload
+
+  div(class="container")
+    block content
+
+  script(src="//ajax.googleapis.com/ajax/libs/dojo/1.7.2/dojo/dojo.js", data-dojo-config="async: true")
+  script(src="/site/app.js")
+

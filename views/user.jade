@@ -1,0 +1,21 @@
+extend _base
+
+block content
+  h1 User Settings
+  form.well
+    label Name
+    input(type="text", placeholder="What should we call you?", value="#{user.name}")
+
+    label Email
+    input(type="text", placeholder="How do we get ahold of you?")
+
+    label Password
+    input(type="text", placeholder="A secret only you know")
+
+    label Password
+    input(type="text", placeholder="Confirm your secret")
+
+    hr
+
+    button.btn.btn-success(type="submit") Submit
+

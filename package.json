@@ -1,0 +1,28 @@
+{
+  "name": "LandisFamilyPhotos",
+  "description": "",
+  "private": true,
+  "author": "Nathan Landis <my8bird@gmail.com>",
+  "version": "0.0.1",
+
+  "scripts": {
+    "test": "icake test"
+  },
+
+  "dependencies": {
+    "iced-coffee-script": "1.2.x",
+    "optimist"          : "0.3.x",
+
+    "supervisor"   : "0.3.x",
+    "express"      : "2.5.x",
+    "neo4j"        : "0.2.x"
+  },
+  "devDependencies": {
+    "mocha":  "1.1.x",
+    "chai" :  "0.2.x",
+    "jade" :  "0.21.x",
+    "should": "0.5.x"
+  },
+  "engine": "node >= 0.6.18"
+}
+
