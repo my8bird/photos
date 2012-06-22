@@ -3,6 +3,9 @@
 express  = require 'express'
 optimist = require 'optimist'
 
+# The Express Application
+app = null
+
 
 parseOptions = () ->
    # Setup CLI options
@@ -11,11 +14,20 @@ parseOptions = () ->
 
        describe('p', 'Port Number').
        alias(   'p', 'port').
-       default( 'p', 8000).
+       default( 'p', 3000).
 
        describe('h', 'Hostname').
        alias(   'h', 'host').
-       default( 'h', 'localhost')
+       default( 'h', 'localhost').
+
+       describe('db_port', 'Database Port Number').
+       default( 'db_port', 27017).
+
+       describe('db_host', 'Database Hostname').
+       default( 'db_host', 'localhost')
+
+       describe('db_name', 'Database Name').
+       default( 'db_name', 'photos')
 
    # Show help if required and exit
    if opts.argv.help
@@ -31,19 +43,22 @@ exports.buildApp = buildApp = () ->
    app.set 'view options', { layout: false }
 
    app.error (err, req, res, next) ->
-      res.render '500', {error: err}
+      if req.is('html')
+         res.render '500', {error: err}
+      else
+         res.send(err.message, 500)
 
    app.use express.static(__dirname + '../static')
    app.use express.bodyParser()
 
-   require('util/environment')(app, express)
-   require('util/routes')(app)
+   require('photos/util/environment')(app, express)
+   require('photos/util/routes')(app)
 
    return app
 
 
-exports.configDatabase = configDatabase = (host, port) ->
-   require('util/database').setup(host, port)
+exports.configDatabase = configDatabase = (host, port, dbName, cb) ->
+   require('photos/util/database').setup(host, port, dbName, cb)
 
 
 startApp = (host, port) ->
@@ -54,6 +69,10 @@ startApp = (host, port) ->
 
 if require.main == module
    argv = parseOptions()
+
    buildApp()
-   configDatabase(argv.db_host, argv.db_port)
+
+   await configDatabase(argv.db_host, argv.db_port, argv.db_name, defer(err))
+   if err then return console.error err
+
    startApp(argv.host, argv.port)

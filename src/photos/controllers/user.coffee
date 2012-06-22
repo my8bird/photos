@@ -1,13 +1,19 @@
-{getDB}  = require "util/database"
-assert   = require "assert"
+{ObjectID}   = require 'mongodb'
+{Collection} = require 'photos/util/database'
+
+assert = require "assert"
+
 
 error = (res, text, statusCode = 500) ->
-   console.error(text)
    res.send(text, statusCode)
 
 
 User = (data) ->
-   {"name": data["name"] || "No Name"}
+   assert data.name, 'Invalid name'
+   return {
+      _id:  ''+new ObjectID()
+      name: data.name
+      }
 
 
 listUsers = (req, res, next) ->
@@ -31,13 +37,21 @@ createUser = (req, res, next) ->
    if not req.is("json")
       return error(res, 'JSON body is required', 400)
 
-   user = User(req.body)
-   await getDB().createNode(user).save(defer(err))
+   try
+      user = User(req.body)
+   catch err
+      return error(res, 'JSON input invalid', 400)
 
-   if err
-      return error(res, 'Unable to save new user', 500)
+   await Collection('user', defer(err, collection))
+   if err then return error(res, 'DB error', 500)
 
-   res.send(201)
+   await collection.insert(user, defer(err, docs))
+   if err then return error(res, 'Unable to save new user', 500)
+
+   res.header 'content-type', 'application/json'
+   res.header 'location',     "/user/#{docs[0]._id}"
+
+   res.send('Created', 201)
 
 
 getUser = (req, res, next) ->
