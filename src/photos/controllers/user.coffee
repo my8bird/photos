@@ -11,9 +11,19 @@ error = (res, text, statusCode = 500) ->
 User = (data) ->
    assert data.name, 'Invalid name'
    return {
-      _id:  ''+new ObjectID()
+      _id:  new ObjectID()
       name: data.name
       }
+
+
+_storeUser = (user, cb) ->
+   await Collection('user', defer(err, collection))
+   if err then return cb('DB error')
+
+   await collection.insert(user, defer(err, docs))
+   if err then return cb('Unable to save new user')
+
+   cb(null, docs[0])
 
 
 listUsers = (req, res, next) ->
@@ -42,25 +52,29 @@ createUser = (req, res, next) ->
    catch err
       return error(res, 'JSON input invalid', 400)
 
-   await Collection('user', defer(err, collection))
-   if err then return error(res, 'DB error', 500)
+   await _storeUser(user, defer(err, stored_user))
+   if err then return error(res, err, 500)
 
-   await collection.insert(user, defer(err, docs))
-   if err then return error(res, 'Unable to save new user', 500)
+   res.header 'location', "/user/#{stored_user._id}"
+   res.send(201)
 
-   res.header 'content-type', 'application/json'
-   res.header 'location',     "/user/#{docs[0]._id}"
-
-   res.send('Created', 201)
 
 
 getUser = (req, res, next) ->
-   user_id = req.params.id
+   try
+     user_id = new ObjectID(req.params.id)
+   catch err
+     return error(res, 'Id is not valid', 400)
 
-   database.getCollection("user").findOne {_id: new ObjectID(user_id)}, (err, user) ->
-      if err
-         throw err
-      res.json(user)
+   await Collection("user").findOne {_id: user_id}, defer(err, user)
+   if err then return error(res, err, 500)
+
+   if user is null
+      return error(res, 'User not found', 404)
+
+   res.json(user)
+
+
 
 updateUser = (req, res, next) ->
    assert req.is("json")
