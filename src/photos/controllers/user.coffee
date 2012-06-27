@@ -1,24 +1,32 @@
 {ObjectID}   = require 'mongodb'
 {Collection} = require 'photos/util/database'
-
-assert = require 'assert'
-_      = require 'underscore'
+assert       = require 'assert'
+_            = require 'underscore'
 
 {error, parseDocId, requireJson} = require './helpers'
+{check, sanitize}                = require('validator')
 
 
-{check, sanitize} = require('validator')
-User = (data) ->
+parseUser = (data) ->
+   """
+   User validation and base object type
+   """
+   # Validate the input data
    check(data.name)
    check(data.email).isEmail()
 
+   # Create the User
    return {
       _id:   new ObjectID()
       name:  sanitize(data.name).xss().trim()
       email: sanitize(data.email).xss().trim()
       }
 
+
 _storeUser = (user, cb) ->
+   """
+   Helper which
+   """
    await Collection('user', defer(err, collection))
    if err then return cb('DB error')
 
@@ -33,8 +41,11 @@ listUsers = (req, res, next) ->
    Returns the full list of all users
    """
    # Pull out the query args
-   limit  = req.query.limit
-   offset = req.query.offset
+   limit  = sanitize(req.query.limit).toInt()
+   offset = sanitize(req.query.offset).toInt()
+
+   check(limit).min(0)
+   check(offset).min(0)
 
    # Retrieve user's from the database sorted by their added date
    query = Collection("user").find().sort([['added_on', 1]])
@@ -61,7 +72,7 @@ createUser = (req, res, next) ->
    @see User parser for input JSON format
    """
    try
-      user = User(req.body)
+      user = parseUser(req.body)
    catch err
       return error(res, 'JSON input invalid', 400)
 
@@ -74,7 +85,8 @@ createUser = (req, res, next) ->
 
    # Notify the caller that the user was added.
    res.header 'location', "/user/#{stored_user._id}"
-   res.send(201)
+   ret_user = _.pick(stored_user, '_id', 'name', 'email')
+   res.json(ret_user, 201)
 
 
 getUser = (req, res, next) ->
@@ -89,7 +101,7 @@ getUser = (req, res, next) ->
 
 updateUser = (req, res, next) ->
    try
-      new_user = User(req.body)
+      new_user = parseUser(req.body)
    catch err
       return error(res, 'JSON input invalid', 400)
 
@@ -97,13 +109,16 @@ updateUser = (req, res, next) ->
    if err          then return error(res, err, 500)
    if user is null then return error(res, 'User does not exist', 400)
 
+   # Merge the updates into the databases version
    _.defaults(new_user, user)
    delete new_user['_id']
 
+   # Save the changes out to the database
    await Collection("user").update({_id: req.docId}, {$set: new_user}, defer(err))
    if err then return error(res, err, 500)
 
-   res.json(new_user)
+   # Let the user know things went well
+   res.send(200)
 
 
 removeUser = (req, res, next) ->
