@@ -49,8 +49,8 @@ class RestClient
    post: (url, body, headers, cb) =>
       @_sendRequest('POST', url, body, headers, cb)
 
-   delete: (url, body, headers, cb) =>
-      @_sendRequest('DELETE', url, body, headers, cb)
+   delete: (url, headers, cb) =>
+      @_sendRequest('DELETE', url, null, headers, cb)
 
    put: (url, body, headers, cb) =>
       @_sendRequest('PUT', url, body, headers, cb)

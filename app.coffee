@@ -38,7 +38,6 @@ parseOptions = () ->
 
 exports.buildApp = buildApp = () ->
    app = express.createServer()
-
    app.set 'view engine', 'jade'
    app.set 'view options', { layout: false }
 
@@ -47,6 +46,8 @@ exports.buildApp = buildApp = () ->
          res.render '500', {error: err}
       else
          res.send(err.message, 500)
+
+      throw err
 
    app.use express.static(__dirname + '../static')
    app.use express.bodyParser()

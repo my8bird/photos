@@ -1,20 +1,22 @@
 {ObjectID}   = require 'mongodb'
 {Collection} = require 'photos/util/database'
 
-assert = require "assert"
+assert = require 'assert'
+_      = require 'underscore'
+
+{error, parseDocId, requireJson} = require './helpers'
 
 
-error = (res, text, statusCode = 500) ->
-   res.send(text, statusCode)
-
-
+{check, sanitize} = require('validator')
 User = (data) ->
-   assert data.name, 'Invalid name'
-   return {
-      _id:  new ObjectID()
-      name: data.name
-      }
+   check(data.name)
+   check(data.email).isEmail()
 
+   return {
+      _id:   new ObjectID()
+      name:  sanitize(data.name).xss().trim()
+      email: sanitize(data.email).xss().trim()
+      }
 
 _storeUser = (user, cb) ->
    await Collection('user', defer(err, collection))
@@ -30,43 +32,53 @@ listUsers = (req, res, next) ->
    """
    Returns the full list of all users
    """
-   database.getCollection("user").find {}, (err, cursor) ->
-      cursor.toArray (err, items) ->
-         res.json({"users": items})
+   # Pull out the query args
+   limit  = req.query.limit
+   offset = req.query.offset
+
+   # Retrieve user's from the database sorted by their added date
+   query = Collection("user").find().sort([['added_on', 1]])
+   # Since this is Mongo be sure to limit the data returned to the pieces needed
+   query.fields =
+     _id:   1
+     name:  1
+     email: 1
+
+   # Add the query args as needed to allow pagination
+   if offset
+     query.skip(parseInt(offset))
+   if limit
+     query.limit(parseInt(limit, 10))
+
+   query.toArray (err, items) ->
+     res.json({"items": items})
 
 
 createUser = (req, res, next) ->
    """
    Creates a user and return the uri that can be used get/update the user in the future
 
-   Input:
-       {
-         "name": "users name"
-       }
+   @see User parser for input JSON format
    """
-   if not req.is("json")
-      return error(res, 'JSON body is required', 400)
-
    try
       user = User(req.body)
    catch err
       return error(res, 'JSON input invalid', 400)
 
+   # Tack on the date so that we know when the user was first seen.
+   user.added_on = new Date().toISOString()
+
+   # Store the user into the database
    await _storeUser(user, defer(err, stored_user))
    if err then return error(res, err, 500)
 
+   # Notify the caller that the user was added.
    res.header 'location', "/user/#{stored_user._id}"
    res.send(201)
 
 
-
 getUser = (req, res, next) ->
-   try
-     user_id = new ObjectID(req.params.id)
-   catch err
-     return error(res, 'Id is not valid', 400)
-
-   await Collection("user").findOne {_id: user_id}, defer(err, user)
+   await Collection("user").findOne {_id: req.docId}, defer(err, user)
    if err then return error(res, err, 500)
 
    if user is null
@@ -75,28 +87,40 @@ getUser = (req, res, next) ->
    res.json(user)
 
 
-
 updateUser = (req, res, next) ->
-   assert req.is("json")
-   user_id = req.params.id
+   try
+      new_user = User(req.body)
+   catch err
+      return error(res, 'JSON input invalid', 400)
 
-   updated_user = User(req.body)
+   await Collection("user").findOne {_id: req.docId}, defer(err, user)
+   if err          then return error(res, err, 500)
+   if user is null then return error(res, 'User does not exist', 400)
 
-   database.getCollection("user").update(
-      {_id: new ObjectID(user_id)},
-      {$set: {name: updated_user.name}},
-      (err) ->
-         res.json(updated_user)
-   )
+   _.defaults(new_user, user)
+   delete new_user['_id']
+
+   await Collection("user").update({_id: req.docId}, {$set: new_user}, defer(err))
+   if err then return error(res, err, 500)
+
+   res.json(new_user)
+
+
+removeUser = (req, res, next) ->
+   await Collection("user").remove({_id: req.docId}, defer(err))
+   if err then return error(res, err, 500)
+
+   res.send(200)
 
 
 module.exports =
    routes:
       '/user': [
          {type: 'GET',  handler: listUsers},
-         {type: 'POST', handler: createUser}
+         {type: 'POST', handler: requireJson(createUser)}
          ]
       '/user/:id': [
-         {type: 'GET', handler: getUser},
-         {type: 'PUT', handler: updateUser}
+         {type: 'GET',    handler: parseDocId(getUser)},
+         {type: 'PUT',    handler: requireJson(parseDocId(updateUser))},
+         {type: 'DELETE', handler: parseDocId(removeUser)}
          ]

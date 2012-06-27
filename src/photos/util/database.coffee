@@ -1,6 +1,8 @@
 {Server, Db} = require 'mongodb'
 
+
 _server = _db = null
+
 
 exports.setup = (host, port, dbName, cb) ->
    _server = new Server('localhost', 27017, {auto_reconnect: true})
@@ -16,7 +18,7 @@ exports.cleanup = (cb) ->
       err = {}
       for {collectionName: collection} in info
          if collection != 'system.indexes'
-            _db.dropCollection collection, defer(err[collection])
+            _db.collection(collection).remove defer(err[collection])
 
    collections_with_error = (c for c, e of err when e)
    if 0 < collections_with_error.length

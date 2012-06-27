@@ -11,6 +11,18 @@ _        = require 'underscore'
 json_headers = {'content-type': 'application/json'}
 
 
+addUser = (data, cb) ->
+  if _.isFunction(data)
+    cb = data
+    data = {name: 'bobo', email: 'clown@school.com'}
+
+  await restClient.post '/user', data, json_headers, defer(err, user, res)
+  assert.ifError err
+  assert.equal 201, res.statusCode
+
+  cb(res.headers['location'])
+
+
 assert_object = (object, expected) ->
    """
    Loop over the object and make sure all of the expect keys are there.
@@ -65,7 +77,8 @@ describe 'User REST Handlers', () ->
 
    it 'should add new user', (done) ->
       # Add the user
-      await restClient.post '/user', {name: 'woot'}, json_headers, defer(err, buf, res)
+      await restClient.post '/user', {name: 'woot', email: 'woot@ding.com'},
+                   json_headers, defer(err, buf, res)
       assert.ifError err
       assert.equal 201, res.statusCode
 
@@ -81,15 +94,12 @@ describe 'User REST Handlers', () ->
 
    it 'should allow retrieving a saved user', (done) ->
       # Add the user
-      await restClient.post '/user', {name: 'woot'}, json_headers, defer(err, buf, res)
-      assert.ifError err
-      assert.equal 201, res.statusCode
+      await addUser defer(user_uri)
 
       # GET the user
-      uri = res.headers['location']
-      await restClient.get uri, {}, defer(err, user, res)
+      await restClient.get user_uri, {}, defer(err, user, res)
       assert.equal 200, res.statusCode
-      assert.equal 'woot', user.name
+      assert.equal 'bobo', user.name
 
       done()
 
@@ -108,5 +118,67 @@ describe 'User REST Handlers', () ->
       await restClient.get uri, {}, defer(err, data, res)
       assert.equal 400, res.statusCode
       assert.equal 'Id is not valid', data
+
+      done()
+
+   it 'should allow updating a saved user', (done) ->
+      # Add an user
+      await addUser defer(user_uri)
+
+      # Update the user
+      await restClient.put user_uri, {name: 'new name', email: 'new@email.com'},
+              json_headers, defer(err, user, res)
+      assert.equal 200, res.statusCode
+      assert.equal 'new name', user.name
+
+      done()
+
+   it 'should allow removing a saved user', (done) ->
+      # Add an user
+      await addUser defer(user_uri)
+
+      # Update the user
+      await restClient.delete user_uri, {}, defer(err, data, res)
+      assert.equal 200, res.statusCode
+
+      done()
+
+   it 'should list all users in the system', (done) ->
+      # Add some users (add serially so that we know the return order)
+      await addUser {name: 'user1', email: 'd1@d.com'}, defer(user1_uri)
+      await addUser {name: 'user2', email: 'd2@d.com'}, defer(user2_uri)
+
+      await restClient.get '/user', {}, defer(err, data, res)
+      assert.equal 200, res.statusCode
+
+      users = data.items
+      assert.equal 2, users.length
+      assert_object users[0], {name: 'user1', email: 'd1@d.com'}
+      assert_object users[1], {name: 'user2', email: 'd2@d.com'}
+
+      done()
+
+   it 'should list users up to limit', (done) ->
+      # Add some users (add serially so that we know the return order)
+      await addUser {name: 'user1', email: 'd1@d.com'}, defer(user1_uri)
+      await addUser {name: 'user2', email: 'd2@d.com'}, defer(user2_uri)
+
+      # Grab only one user
+      await restClient.get '/user?limit=1', {}, defer(err, data, res)
+      assert.equal 200, res.statusCode
+
+      users = data.items
+      assert.equal 1, users.length
+      assert_object users[0], {name: 'user1', email: 'd1@d.com'}
+
+      # Grab the next page of users
+      await restClient.get '/user?offset=1&limit=1', {}, defer(err, data, res)
+
+      assert.equal 200, res.statusCode
+
+
+      users = data.items
+      assert.equal 1, users.length
+      assert_object users[0], {name: 'user2', email: 'd2@d.com'}
 
       done()
