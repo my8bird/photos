@@ -2,6 +2,7 @@
 {Collection} = require 'photos/util/database'
 assert       = require 'assert'
 _            = require 'underscore'
+bcrypt       = require 'bcrypt'
 
 {error, parseDocId, requireJson} = require './helpers'
 {check, sanitize}                = require('validator')
@@ -17,7 +18,6 @@ parseUser = (data) ->
 
    # Create the User
    return {
-      _id:   new ObjectID()
       name:  sanitize(data.name).xss().trim()
       email: sanitize(data.email).xss().trim()
       }
@@ -71,13 +71,31 @@ createUser = (req, res, next) ->
 
    @see User parser for input JSON format
    """
+   # XXX fail if user already exists
    try
+      # Grab the basic user data
       user = parseUser(req.body)
+
+      # When creating a new user we need to get the auth process started.
+      password = req.body.password
+      check(password).len(6)
    catch err
-      return error(res, 'JSON input invalid', 400)
+      return error(res, err.message, 400)
 
    # Tack on the date so that we know when the user was first seen.
    user.added_on = new Date().toISOString()
+
+   # Give the user and id
+   user._id = new ObjectID()
+
+   # Generate the per user salt and use it to generate the hash for this user.
+   await bcrypt.genSalt(defer(err, user_salt))
+   if err then return error(res, err, 500)
+
+   await bcrypt.hash(password, user_salt, defer(err, hash_pass))
+   user.auth =
+      salt: user_salt
+      hash: hash_pass
 
    # Store the user into the database
    await _storeUser(user, defer(err, stored_user))
@@ -110,8 +128,7 @@ updateUser = (req, res, next) ->
    if user is null then return error(res, 'User does not exist', 400)
 
    # Merge the updates into the databases version
-   _.defaults(new_user, user)
-   delete new_user['_id']
+   _.defaults(new_user, _.pick(user, 'name', 'email'))
 
    # Save the changes out to the database
    await Collection("user").update({_id: req.docId}, {$set: new_user}, defer(err))

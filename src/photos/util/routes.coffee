@@ -1,5 +1,5 @@
 controllers = [
-   'user'
+   'user', 'auth'
 ]
 
 module.exports = (app) ->

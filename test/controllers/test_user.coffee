@@ -14,7 +14,7 @@ json_headers = {'content-type': 'application/json'}
 addUser = (data, cb) ->
   if _.isFunction(data)
     cb = data
-    data = {name: 'bobo', email: 'clown@school.com'}
+    data = {name: 'bobo', email: 'clown@school.com', password: 'valid_password'}
 
   await restClient.post '/user', data, json_headers, defer(err, user, res)
   assert.ifError err
@@ -71,14 +71,14 @@ describe 'User REST Handlers', () ->
 
    it 'should fail to add data if body does not have required keys', (done) ->
       await restClient.post '/user', {}, json_headers, defer(err, buf, res)
-      assert.equal buf, 'JSON input invalid'
+      assert.equal buf, 'Invalid email'
       assert.equal 400, res.statusCode
       done()
 
    it 'should add new user', (done) ->
       # Add the user
-      await restClient.post '/user', {name: 'woot', email: 'woot@ding.com'},
-                   json_headers, defer(err, buf, res)
+      data = {name: 'woot', email: 'woot@ding.com', password: 'valid_pass'}
+      await restClient.post '/user', data, json_headers, defer(err, buf, res)
       assert.ifError err
       assert.equal 201, res.statusCode
 
@@ -148,8 +148,8 @@ describe 'User REST Handlers', () ->
 
    it 'should list all users in the system', (done) ->
       # Add some users (add serially so that we know the return order)
-      await addUser {name: 'user1', email: 'd1@d.com'}, defer(user1, user1_uri)
-      await addUser {name: 'user2', email: 'd2@d.com'}, defer(user2, user2_uri)
+      await addUser {name: 'user1', email: 'd1@d.com', password: 'asdfasdfasdf'}, defer(user1, user1_uri)
+      await addUser {name: 'user2', email: 'd2@d.com', password: '12345678'}, defer(user2, user2_uri)
 
       await restClient.get '/user', {}, defer(err, data, res)
       assert.equal 200, res.statusCode
@@ -163,8 +163,8 @@ describe 'User REST Handlers', () ->
 
    it 'should list users up to limit', (done) ->
       # Add some users (add serially so that we know the return order)
-      await addUser {name: 'user1', email: 'd1@d.com'}, defer(user1, user1_uri)
-      await addUser {name: 'user2', email: 'd2@d.com'}, defer(user2, user2_uri)
+      await addUser {name: 'user1', email: 'd1@d.com', password: 'asdfasdf'}, defer(user1, user1_uri)
+      await addUser {name: 'user2', email: 'd2@d.com', password: '12345678'}, defer(user2, user2_uri)
 
       # Grab only one user
       await restClient.get '/user?limit=1', {}, defer(err, data, res)
