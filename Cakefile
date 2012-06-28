@@ -20,16 +20,14 @@ task 'test', 'run all tests', (options) ->
   # Build up command
   runner = "mocha"
   args   = ["--compilers", "coffee:iced-coffee-script",
-           #"--require", "should",
-           #"--reporter", "spec",
            "--colors",
            "--recursive",
            "--regex", ".*test_.*\.coffee",
-           "--ignore-leaks",
+           "--reporter", "min"
            "test/"]
 
   if options.watch
-    args.push('--watch')
+    args.splice(0, 0, '--watch')
 
   # Run tests
   await run(runner, args, defer(status))
