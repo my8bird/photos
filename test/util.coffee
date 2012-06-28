@@ -5,6 +5,7 @@ _        = require 'underscore'
 http     = require 'http'
 assert   = require 'assert'
 
+#{ Test framework helpers
 server =
    host: 'localhost'
    port: 8000
@@ -15,8 +16,19 @@ db =
    name: 'photos_test'
 
 
+exports.ServerTestMixin = () ->
+   before (done) ->
+      startServer done
+
+   after (done) ->
+      shutdownServer done
+
+   afterEach (done) ->
+      clearDatabase done
+
+
 _server = null
-exports.startServer = (cb) ->
+startServer = (cb) ->
    _server = app.buildApp()
 
    await app.configDatabase db.host, db.port, db.name, defer(err)
@@ -26,15 +38,17 @@ exports.startServer = (cb) ->
    assert.ifError err
    cb(err)
 
-exports.shutdownServer = (cb) ->
+shutdownServer = (cb) ->
    await
       database.cleanup defer()
       _server.close()
       _server = null
    cb()
 
-exports.clearDatabase = (cb) ->
+clearDatabase = (cb) ->
    database.cleanup cb
+#}
+
 
 isJson = (res) ->
    return null != /application\/json/.exec res.headers['content-type']

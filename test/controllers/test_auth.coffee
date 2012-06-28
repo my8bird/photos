@@ -4,7 +4,7 @@
 assert   = require 'assert'
 _        = require 'underscore'
 
-{startServer, shutdownServer, clearDatabase, restClient} = require 'test/util'
+{ServerTestMixin, restClient} = require 'test/util'
 
 {Collection} = require 'photos/util/database'
 
@@ -24,14 +24,7 @@ addUser = (data, cb) ->
 
 
 describe 'User Authentication Handlers', () ->
-   before (done) ->
-      startServer done
-
-   after (done) ->
-      shutdownServer done
-
-   afterEach (done) ->
-      clearDatabase done
+   ServerTestMixin()
 
    it 'should allow users to login in', (done) ->
       # Add a user which will take care of setting the password

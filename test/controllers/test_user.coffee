@@ -4,7 +4,7 @@
 assert   = require 'assert'
 _        = require 'underscore'
 
-{startServer, shutdownServer, clearDatabase, restClient} = require 'test/util'
+{ServerTestMixin, restClient} = require 'test/util'
 
 {Collection} = require 'photos/util/database'
 
@@ -50,14 +50,7 @@ assert_item_exists = (_id, cb) ->
 
 
 describe 'User REST Handlers', () ->
-   before (done) ->
-      startServer done
-
-   after (done) ->
-      shutdownServer done
-
-   afterEach (done) ->
-      clearDatabase done
+   ServerTestMixin()
 
    it 'should fail to add data if body is not JSON', (done) ->
       # there are no headers so the mime type check fails
@@ -148,9 +141,13 @@ describe 'User REST Handlers', () ->
 
    it 'should list all users in the system', (done) ->
       # Add some users (add serially so that we know the return order)
-      await addUser {name: 'user1', email: 'd1@d.com', password: 'asdfasdfasdf'}, defer(user1, user1_uri)
-      await addUser {name: 'user2', email: 'd2@d.com', password: '12345678'}, defer(user2, user2_uri)
+      data = {name: 'user1', email: 'd1@d.com', password: 'asdfasdfasdf'}
+      await addUser data, defer(user1, user1_uri)
 
+      data = {name: 'user2', email: 'd2@d.com', password: '12345678'}
+      await addUser data, defer(user2, user2_uri)
+
+      # Get the list of users we just added
       await restClient.get '/user', {}, defer(err, data, res)
       assert.equal 200, res.statusCode
 
