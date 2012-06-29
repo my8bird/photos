@@ -1,4 +1,9 @@
 {ObjectID}   = require 'mongodb'
+crypto       = require 'crypto'
+
+
+exports.hashPassword = (password, salt, done) ->
+   crypto.pbkdf2(password, salt, 1000, 64, done)
 
 
 exports.error = error = (res, text, statusCode = 500) ->

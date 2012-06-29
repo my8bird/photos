@@ -2,10 +2,17 @@
 {Collection} = require 'photos/util/database'
 assert       = require 'assert'
 _            = require 'underscore'
-bcrypt       = require 'bcrypt'
+crypto       = require 'crypto'
 
-{error, parseDocId, requireJson} = require './helpers'
+{error, parseDocId, requireJson, hashPassword} = require './helpers'
 {check, sanitize}                = require('validator')
+
+
+createSalt = (done) ->
+   await crypto.randomBytes(64, defer(err, buf))
+   if err then return done(err)
+
+   done(null, buf.toString('base64'))
 
 
 parseUser = (data) ->
@@ -27,10 +34,7 @@ _storeUser = (user, cb) ->
    """
    Helper which
    """
-   await Collection('user', defer(err, collection))
-   if err then return cb('DB error')
-
-   await collection.insert(user, defer(err, docs))
+   await Collection('user').insert(user, defer(err, docs))
    if err then return cb('Unable to save new user')
 
    cb(null, docs[0])
@@ -89,13 +93,16 @@ createUser = (req, res, next) ->
    user._id = new ObjectID()
 
    # Generate the per user salt and use it to generate the hash for this user.
-   await bcrypt.genSalt(defer(err, user_salt))
+   await createSalt(defer(err, user_salt))
    if err then return error(res, err, 500)
 
-   await bcrypt.hash(password, user_salt, defer(err, hash_pass))
+   await hash_pass = hashPassword(password, user_salt, defer(err, hash_pass))
+   if err then return error(res, err, 500)
+
    user.auth =
       salt: user_salt
       hash: hash_pass
+      algo: 1
 
    # Store the user into the database
    await _storeUser(user, defer(err, stored_user))

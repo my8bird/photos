@@ -27,5 +27,41 @@ exports.cleanup = (cb) ->
       cb()
 
 
-exports.Collection = (name, cb) ->
-   _db.collection name, cb
+exports.Collection = Collection = (name) ->
+   return _db.collection(name)
+
+
+exports.dropAllData = (cb) ->
+   await _db.collections(defer(err, collections))
+   await
+      err = {}
+      for collection in collections
+         if collection.collectionName != 'system.indexes'
+            collection.drop defer(err[collection.collectionName])
+
+   collections_with_error = (c for c, e of err when e)
+   if 0 < collections_with_error.length
+      cb(new Error("Collections were not removed: #{collections_with_error}"))
+   else
+      cb()
+
+
+exports.migrate = (cb) ->
+   # Add collections
+   User    = Collection('user')
+   Session = Collection('session')
+
+   # Add indexes
+   index_error = (collection, err) ->
+      if err
+         return cb(new Error("Unable to add index to #{collection}: #{err.message}"))
+   await
+      User.ensureIndex({'email': 1}, {unique: true}, defer(err_user))
+      if err_user then return index_error('user', err_user)
+
+      Session.ensureIndex({'email': 1}, {expireAfterSeconds: 3600}, defer(err_session))
+      if err_user then return index_error('session', err_user)
+
+   console.log "############ Database Ready ################"
+
+   cb()

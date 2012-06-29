@@ -35,6 +35,11 @@ describe 'User Authentication Handlers', () ->
       assert.ifError err
       assert.equal 200, res.statusCode
 
+      # A token was returned
+      assert.equal 64, buf.length
+
+      # And the token was saved to the user so we can find it later
+
       done()
 
    it 'should block users with invalid password', (done) ->

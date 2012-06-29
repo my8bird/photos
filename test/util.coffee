@@ -10,43 +10,50 @@ server =
    host: 'localhost'
    port: 8000
 
+   ready: false
+
 db =
-   host: 'localhost'
-   port: 27017
-   name: 'photos_test'
+   host:  'localhost'
+   port:  27017
+   name:  'photos_test'
 
 
 exports.ServerTestMixin = () ->
+   _server = null
+
    before (done) ->
-      startServer done
+      if server.ready
+         return done()
 
-   after (done) ->
-      shutdownServer done
+      # Build the app
+      _server = app.buildApp()
 
-   afterEach (done) ->
-      clearDatabase done
+      # Get the database up and running
+      await app.configDatabase db.host, db.port, db.name, defer(err)
+      if err then return done(err)
 
+      # Ensure the database is setup correctly
+      await database.dropAllData defer(err)
+      if err then return done(err)
 
-_server = null
-startServer = (cb) ->
-   _server = app.buildApp()
+      await database.migrate(defer(err))
+      if err then return done(err)
 
-   await app.configDatabase db.host, db.port, db.name, defer(err)
-   assert.ifError err
+      # Start the server running
+      await _server.listen server.port, server.host, defer(err)
+      if err then return done(err)
 
-   await _server.listen server.port, server.host, defer(err)
-   assert.ifError err
-   cb(err)
+      # Signal that the server is running so other tests do not need
+      # to go through the setup
+      server.ready = true
 
-shutdownServer = (cb) ->
-   await
-      database.cleanup defer()
-      _server.close()
-      _server = null
-   cb()
+      # Start running the tests
+      done()
 
-clearDatabase = (cb) ->
-   database.cleanup cb
+   beforeEach (done) ->
+      # Make sure to clear the database before running so that we do not
+      # collide with other tests data.
+      database.cleanup(done)
 #}
 
 

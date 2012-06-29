@@ -39,14 +39,15 @@ assert_item_exists = (_id, cb) ->
    cb gets called with the user instance.
    """
    # Grab the collection
-   await Collection 'user', defer(err, User)
+   User = Collection 'user'
+   assert.ifError err
 
    # Look up the document
    await User.findOne {_id: new ObjectID(_id)}, defer(err, user_doc)
    # raise error if something went wrong
    assert.ifError err, 'Error getting new user doc'
 
-   cb(err, user_doc)
+   cb(null, user_doc)
 
 
 describe 'User REST Handlers', () ->
